@@ -132,7 +132,7 @@ jobs:
       #     done
 
       - name: Setup Just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v3
 
       - name: Test Image
         run: just test
