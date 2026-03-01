@@ -148,7 +148,7 @@ test $target_image=image_name $tag=default_tag:
     done
 
     # Check depmod ran (modules.dep should reference our modules)
-    if podman run --rm "${IMAGE}" grep -q 'extra/mt7927' /usr/lib/modules/*/modules.dep; then
+    if podman run --rm "${IMAGE}" sh -c "grep -q 'extra/mt7927' /usr/lib/modules/*/modules.dep"; then
         echo "PASS: modules.dep references extra/mt7927"
     else
         echo "FAIL: modules.dep missing mt7927 entries (depmod may not have run)"
