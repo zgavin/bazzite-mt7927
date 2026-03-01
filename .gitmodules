@@ -1,0 +1,3 @@
+[submodule "build_files/mediatek-mt7927-dkms"]
+	path = build_files/mediatek-mt7927-dkms
+	url = https://github.com/jetm/mediatek-mt7927-dkms.git
