@@ -161,7 +161,6 @@ test $target_image=image_name $tag=default_tag:
 
     # Check config files
     for cfg in \
-        /etc/modprobe.d/mt7927-override.conf \
         /etc/depmod.d/mt7927.conf \
         /etc/modules-load.d/mt7925e.conf; do
         if podman run --rm "${IMAGE}" test -f "${cfg}"; then
