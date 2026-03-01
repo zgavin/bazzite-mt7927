@@ -86,12 +86,16 @@ sudoif command *args:
 #
 
 # Build the image using the specified parameters
-build $target_image=image_name $tag=default_tag:
+# Pass base_image to override the upstream bazzite variant (e.g. ghcr.io/ublue-os/bazzite-gnome:stable)
+build $target_image=image_name $tag=default_tag $base_image="":
     #!/usr/bin/env bash
 
     BUILD_ARGS=()
     if [[ -z "$(git status -s)" ]]; then
         BUILD_ARGS+=("--build-arg" "SHA_HEAD_SHORT=$(git rev-parse --short HEAD)")
+    fi
+    if [[ -n "${base_image}" ]]; then
+        BUILD_ARGS+=("--build-arg" "BASE_IMAGE=${base_image}")
     fi
 
     podman build \
