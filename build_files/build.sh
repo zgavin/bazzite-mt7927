@@ -136,7 +136,6 @@ install -Dm644 "${BUILD_DIR}/firmware/WIFI_RAM_CODE_MT6639_2_1.bin" \
 
 ### Stage config files ----------------------------------------------------------
 
-install -Dm644 "${CTX}/config/modprobe-mt7927.conf" "${OUTPUT_DIR}/etc/modprobe.d/mt7927-override.conf"
 install -Dm644 "${CTX}/config/depmod-mt7927.conf"   "${OUTPUT_DIR}/etc/depmod.d/mt7927.conf"
 mkdir -p "${OUTPUT_DIR}/etc/modules-load.d"
 echo "mt7925e" > "${OUTPUT_DIR}/etc/modules-load.d/mt7925e.conf"
