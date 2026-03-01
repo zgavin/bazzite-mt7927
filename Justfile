@@ -100,6 +100,68 @@ build $target_image=image_name $tag=default_tag:
         --tag "${target_image}:${tag}" \
         .
 
+# Verify the built image contains the expected modules, firmware, and config
+[group('Utility')]
+test $target_image=image_name $tag=default_tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    IMAGE="${target_image}:${tag}"
+    FAIL=0
+
+    echo "Testing ${IMAGE}..."
+
+    # Check all 9 kernel modules
+    MODULES=$(podman run --rm "${IMAGE}" find /usr/lib/modules -path '*/extra/mt7927/*.ko.xz' | sort)
+    EXPECTED_COUNT=9
+    ACTUAL_COUNT=$(echo "${MODULES}" | wc -l)
+    if [[ "${ACTUAL_COUNT}" -eq "${EXPECTED_COUNT}" ]]; then
+        echo "PASS: ${ACTUAL_COUNT} kernel modules found"
+    else
+        echo "FAIL: expected ${EXPECTED_COUNT} modules, found ${ACTUAL_COUNT}"
+        FAIL=1
+    fi
+
+    # Check firmware blobs
+    for fw in \
+        /usr/lib/firmware/mediatek/mt6639/BT_RAM_CODE_MT6639_2_1_hdr.bin \
+        /usr/lib/firmware/mediatek/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin \
+        /usr/lib/firmware/mediatek/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin; do
+        if podman run --rm "${IMAGE}" test -f "${fw}"; then
+            echo "PASS: ${fw}"
+        else
+            echo "FAIL: missing ${fw}"
+            FAIL=1
+        fi
+    done
+
+    # Check config files
+    for cfg in \
+        /etc/modprobe.d/mt7927-override.conf \
+        /etc/depmod.d/mt7927.conf \
+        /etc/modules-load.d/mt7925e.conf; do
+        if podman run --rm "${IMAGE}" test -f "${cfg}"; then
+            echo "PASS: ${cfg}"
+        else
+            echo "FAIL: missing ${cfg}"
+            FAIL=1
+        fi
+    done
+
+    # Check depmod ran (modules.dep should reference our modules)
+    if podman run --rm "${IMAGE}" grep -q 'extra/mt7927' /usr/lib/modules/*/modules.dep; then
+        echo "PASS: modules.dep references extra/mt7927"
+    else
+        echo "FAIL: modules.dep missing mt7927 entries (depmod may not have run)"
+        FAIL=1
+    fi
+
+    if [[ "${FAIL}" -eq 0 ]]; then
+        echo "All checks passed."
+    else
+        echo "Some checks failed."
+        exit 1
+    fi
+
 # Command: _rootful_load_image
 # Description: This script checks if the current user is root or running under sudo. If not, it attempts to resolve the image tag using podman inspect.
 #              If the image is found, it loads it into rootful podman. If the image is not found, it pulls it from the repository.
