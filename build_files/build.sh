@@ -420,14 +420,51 @@ install -Dm644 \
     "/usr/lib/firmware/mediatek/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin"
 
 ### --------------------------------------------------------------------------
+### Force patched modules to be preferred over stock kernel modules
+###
+### modules.alias is built from the stock kernel tree during rpm install and
+### does NOT include our extra/mt7927/ overrides.  Even after depmod the
+### stock btusb/mt7925e entries can win because depmod ordering is
+### alphabetical and "kernel/" sorts before "extra/".  Install directives
+### in modprobe.d guarantee our patched copies are always used regardless
+### of depmod ordering or initramfs regeneration by the base image.
+### --------------------------------------------------------------------------
+
+MODPROBE_CONF="/etc/modprobe.d/mt7927-override.conf"
+cat > "${MODPROBE_CONF}" <<'MODPROBE_EOF'
+# Force the patched MediaTek MT7927 modules from extra/mt7927/ to be loaded
+# instead of the stock kernel modules.  This is necessary because depmod
+# may regenerate modules.alias from the stock kernel tree after our build
+# step, causing the unpatched btusb/mt7925e to be loaded instead.
+
+install btusb /sbin/modprobe --ignore-install btusb "$@"; /sbin/modprobe btmtk
+install mt7925e /sbin/modprobe --ignore-install mt7925e "$@"
+MODPROBE_EOF
+
+# Ensure the extra modules directory is in the module search path so that
+# "modprobe btusb" resolves to extra/mt7927/btusb.ko.xz (higher priority
+# than kernel/drivers/bluetooth/btusb.ko.xz).
+# /etc/depmod.d/mt7927.conf overrides the default search order so that
+# "extra" is checked before "updates" and "kernel".
+mkdir -p /etc/depmod.d
+cat > /etc/depmod.d/mt7927.conf <<'DEPMOD_EOF'
+# Ensure out-of-tree mt7927 modules in extra/ override stock kernel modules.
+# Directories listed first have higher priority.
+search extra updates built-in weak-updates override
+DEPMOD_EOF
+
+### --------------------------------------------------------------------------
 ### Update module dependency map and rebuild initramfs
 ### --------------------------------------------------------------------------
 
 echo "Running depmod..."
 depmod -a "${KVER}"
 
-echo "Rebuilding initramfs..."
-dracut --force --kver "${KVER}"
+# Dracut is intentionally skipped here.  Running dracut inside a container
+# build fails: the overlay filesystem does not support xattrs, /boot/efi is
+# not mounted, and hostonly mode tries to introspect a system that doesn't
+# exist yet.  Bootc/rpm-ostree regenerates the initramfs from the installed
+# modules on first boot, so baking one into the image layer is unnecessary.
 
 ### --------------------------------------------------------------------------
 ### Auto-load configuration
