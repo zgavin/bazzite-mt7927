@@ -179,6 +179,20 @@ test $target_image=image_name $tag=default_tag:
         fi
     done
 
+    # Check modules.alias maps MT7927 PCI ID to our patched mt7925e
+    # This is the critical check: even if modules are on disk, the kernel
+    # auto-loads drivers via modules.alias when it detects PCI hardware.
+    # Without the 7927 device ID in the alias table, the hardware goes unclaimed.
+    ALIAS_ENTRY=$(podman run --rm "${IMAGE}" sh -c "grep -i '7927' /usr/lib/modules/${KVER}/modules.alias" || true)
+    if echo "${ALIAS_ENTRY}" | grep -qi 'mt7925e'; then
+        echo "PASS: modules.alias maps PCI ID 7927 to mt7925e"
+    else
+        echo "FAIL: modules.alias does not map PCI ID 7927 to mt7925e"
+        echo "  The patched module's device table may not include the MT7927 PCI ID."
+        echo "  got: ${ALIAS_ENTRY:-<empty>}"
+        FAIL=1
+    fi
+
     if [[ "${FAIL}" -eq 0 ]]; then
         echo "All checks passed."
     else
