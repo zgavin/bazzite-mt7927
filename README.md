@@ -1,6 +1,6 @@
 # bazzite-mt7927
 
-Bazzite OCI images with MT7927 WiFi and Bluetooth support.
+Bazzite OCI images with MT7927 WiFi and Bluetooth support. Updated daily.
 
 ## Status
 
