@@ -119,6 +119,8 @@ jobs:
 
       - name: Setup Just
         uses: extractions/setup-just@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Test Image
         run: just test "${IMAGE_NAME}" "${DEFAULT_TAG}"
