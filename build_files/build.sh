@@ -45,7 +45,7 @@ xz --check=crc32 -f "${INSTALL_DIR}"/*.ko
 
 ### Stage firmware
 install -Dm644 "${SRCDIR}/firmware/BT_RAM_CODE_MT6639_2_1_hdr.bin" \
-    "${OUTPUT_DIR}/usr/lib/firmware/mediatek/mt6639/BT_RAM_CODE_MT6639_2_1_hdr.bin"
+    "${OUTPUT_DIR}/usr/lib/firmware/mediatek/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin"
 install -Dm644 "${SRCDIR}/firmware/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin" \
     "${OUTPUT_DIR}/usr/lib/firmware/mediatek/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin"
 install -Dm644 "${SRCDIR}/firmware/WIFI_RAM_CODE_MT6639_2_1.bin" \

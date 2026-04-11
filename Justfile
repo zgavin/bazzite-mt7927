@@ -148,7 +148,7 @@ test $target_image=image_name $tag=default_tag:
 
     # Check firmware blobs
     for fw in \
-        /usr/lib/firmware/mediatek/mt6639/BT_RAM_CODE_MT6639_2_1_hdr.bin \
+        /usr/lib/firmware/mediatek/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin \
         /usr/lib/firmware/mediatek/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin \
         /usr/lib/firmware/mediatek/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin; do
         if podman run --rm "${IMAGE}" test -f "${fw}"; then
