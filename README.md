@@ -1,5 +1,6 @@
-# bazzite-mt7927 / bluefin-mt7927
-Bazzite and Bluefin OCI images with MT7927 WiFi and Bluetooth support. Updated daily.
+# bazzite-mt7927
+
+Custom Bazzite DX OCI images with MT7927 WiFi 7 / MT6639 Bluetooth support. Updated daily.
 
 ## Status
 
@@ -7,121 +8,46 @@ WiFi and Bluetooth work. See the [upstream driver status](https://github.com/jet
 
 ## What this is
 
-The kernel module patches come from [jetm/mediatek-mt7927-dkms](https://github.com/jetm/mediatek-mt7927-dkms) (included as a git submodule). This repo packages them into Bazzite and Bluefin OCI images for multiple variants.
+Kernel module patches come from [jetm/mediatek-mt7927-dkms](https://github.com/jetm/mediatek-mt7927-dkms) (included as a git submodule). This repo packages them into two bazzite-dx images, published at `ghcr.io/zgavin/`.
+
+Both images ship with **ghostty as the default terminal** (`x-scheme-handler/terminal`, `$TERMINAL`, and the GNOME terminal-exec key all point at ghostty).
 
 ## Available images
 
-All images are published to `ghcr.io/samutoljamo/`.
-
-### Bazzite
-
-Available with `stable` and `testing` tags.
-
-#### Desktop
-
-| Image | Base | Desktop | GPU |
+| Image | Base | Desktop | Extras |
 |---|---|---|---|
-| `bazzite-mt7927` | bazzite | KDE | AMD/Intel |
-| `bazzite-nvidia-open-mt7927` | bazzite-nvidia-open | KDE | NVIDIA (open) |
-| `bazzite-nvidia-mt7927` | bazzite-nvidia | KDE | NVIDIA (proprietary) |
-| `bazzite-gnome-mt7927` | bazzite-gnome | GNOME | AMD/Intel |
-| `bazzite-gnome-nvidia-open-mt7927` | bazzite-gnome-nvidia-open | GNOME | NVIDIA (open) |
+| `bazzite-dx-gnome-mt7927` | bazzite-dx-gnome | GNOME | mt7927 driver, ghostty default |
+| `bazzite-dx-niri-mt7927` | bazzite-dx-gnome | niri + Dank Material Shell | mt7927 driver, ghostty default, greetd + tuigreet, GNOME shell/session/gdm removed |
 
-#### Deck
+The niri variant starts from `bazzite-dx-gnome` so it still has GTK, gnome-keyring, xdg-desktop-portal-gnome, and Nautilus — just not the GNOME shell/session/control-center/settings-daemon/software stack or GDM. Login is handled by greetd+tuigreet on tty1.
 
-| Image | Base | Desktop | GPU |
-|---|---|---|---|
-| `bazzite-deck-mt7927` | bazzite-deck | KDE | AMD/Intel |
-| `bazzite-deck-gnome-mt7927` | bazzite-deck-gnome | GNOME | AMD/Intel |
-| `bazzite-deck-nvidia-mt7927` | bazzite-deck-nvidia | KDE | NVIDIA |
-| `bazzite-deck-nvidia-gnome-mt7927` | bazzite-deck-nvidia-gnome | GNOME | NVIDIA |
-
-### Bluefin
-
-Available with `stable` and `gts` tags.
-
-| Image | Base | Desktop | GPU |
-|---|---|---|---|
-| `bluefin-mt7927` | bluefin | GNOME | AMD/Intel |
-| `bluefin-nvidia-mt7927` | bluefin-nvidia | GNOME | NVIDIA (proprietary) |
-| `bluefin-nvidia-open-mt7927` | bluefin-nvidia-open | GNOME | NVIDIA (open) |
-| `bluefin-dx-mt7927` | bluefin-dx | GNOME + Dev | AMD/Intel |
-| `bluefin-dx-nvidia-mt7927` | bluefin-dx-nvidia | GNOME + Dev | NVIDIA (proprietary) |
-| `bluefin-dx-nvidia-open-mt7927` | bluefin-dx-nvidia-open | GNOME + Dev | NVIDIA (open) |
+Only `:stable` is published; the upstream `bazzite-dx-gnome:testing` tag doesn't exist, so no testing channel is built.
 
 ## Installation
 
-Pick the image that matches your hardware and desktop preference.
-
-### Bazzite
-
 ```bash
-# Desktop - KDE + AMD/Intel GPU
-sudo bootc switch ghcr.io/samutoljamo/bazzite-mt7927:stable
+# GNOME (default bazzite-dx-gnome + mt7927)
+sudo bootc switch ghcr.io/zgavin/bazzite-dx-gnome-mt7927:stable
 
-# Desktop - KDE + NVIDIA (open drivers)
-sudo bootc switch ghcr.io/samutoljamo/bazzite-nvidia-open-mt7927:stable
-
-# Desktop - KDE + NVIDIA (proprietary drivers)
-sudo bootc switch ghcr.io/samutoljamo/bazzite-nvidia-mt7927:stable
-
-# Desktop - GNOME + AMD/Intel GPU
-sudo bootc switch ghcr.io/samutoljamo/bazzite-gnome-mt7927:stable
-
-# Desktop - GNOME + NVIDIA (open drivers)
-sudo bootc switch ghcr.io/samutoljamo/bazzite-gnome-nvidia-open-mt7927:stable
-
-# Deck - KDE + AMD/Intel
-sudo bootc switch ghcr.io/samutoljamo/bazzite-deck-mt7927:stable
-
-# Deck - GNOME + AMD/Intel
-sudo bootc switch ghcr.io/samutoljamo/bazzite-deck-gnome-mt7927:stable
-
-# Deck - KDE + NVIDIA
-sudo bootc switch ghcr.io/samutoljamo/bazzite-deck-nvidia-mt7927:stable
-
-# Deck - GNOME + NVIDIA
-sudo bootc switch ghcr.io/samutoljamo/bazzite-deck-nvidia-gnome-mt7927:stable
+# niri + Dank Material Shell (GNOME stripped)
+sudo bootc switch ghcr.io/zgavin/bazzite-dx-niri-mt7927:stable
 ```
-
-Replace `:stable` with `:testing` if you want the testing channel.
-
-### Bluefin
-
-```bash
-# GNOME + AMD/Intel GPU
-sudo bootc switch ghcr.io/samutoljamo/bluefin-mt7927:stable
-
-# GNOME + NVIDIA (proprietary drivers)
-sudo bootc switch ghcr.io/samutoljamo/bluefin-nvidia-mt7927:stable
-
-# GNOME + NVIDIA (open drivers)
-sudo bootc switch ghcr.io/samutoljamo/bluefin-nvidia-open-mt7927:stable
-
-# GNOME + Dev + AMD/Intel GPU
-sudo bootc switch ghcr.io/samutoljamo/bluefin-dx-mt7927:stable
-
-# GNOME + Dev + NVIDIA (proprietary drivers)
-sudo bootc switch ghcr.io/samutoljamo/bluefin-dx-nvidia-mt7927:stable
-
-# GNOME + Dev + NVIDIA (open drivers)
-sudo bootc switch ghcr.io/samutoljamo/bluefin-dx-nvidia-open-mt7927:stable
-```
-
-Replace `:stable` with `:gts` for the GTS channel.
 
 Reboot after switching.
 
-## Building / Testing locally
+## Building / testing locally
 
 ```bash
-# Build the default variant (bazzite-nvidia-open)
-just build
+# Default GNOME variant
+just build bazzite-dx-gnome-mt7927 stable ghcr.io/ublue-os/bazzite-dx-gnome:stable
 
-# Build a specific variant
-just build bazzite-gnome-mt7927 latest ghcr.io/ublue-os/bazzite-gnome:stable
+# niri variant (pass VARIANT=niri as a build arg)
+podman build \
+  --build-arg BASE_IMAGE=ghcr.io/ublue-os/bazzite-dx-gnome:stable \
+  --build-arg VARIANT=niri \
+  -t bazzite-dx-niri-mt7927:stable .
 
-# Test the built image
-just test
-just test bazzite-gnome-mt7927 latest
+# Test either image
+just test bazzite-dx-gnome-mt7927 stable
+just test bazzite-dx-niri-mt7927 stable
 ```

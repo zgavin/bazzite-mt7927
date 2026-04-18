@@ -18,16 +18,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        base_image:
-          - bazzite-dx-gnome
-        tag:
-          - stable
-          - testing
+        include:
+          - base_image: bazzite-dx-gnome
+            image_name: bazzite-dx-gnome-mt7927
+            variant: default
+            image_desc: "Bazzite DX GNOME with MediaTek MT7927 WiFi 7 / Bluetooth patches"
+          - base_image: bazzite-dx-gnome
+            image_name: bazzite-dx-niri-mt7927
+            variant: niri
+            image_desc: "Bazzite DX (GNOME stripped) + niri + Dank Material Shell with MediaTek MT7927 WiFi 7 / Bluetooth patches"
     uses: ./.github/workflows/build-image.yml
     with:
       base_image: ${{ matrix.base_image }}
-      tag: ${{ matrix.tag }}
-      image_desc: "Bazzite with MediaTek MT7927/MT6639 WiFi 7 and Bluetooth kernel module patches"
+      image_name: ${{ matrix.image_name }}
+      variant: ${{ matrix.variant }}
+      tag: stable
+      image_desc: ${{ matrix.image_desc }}
     secrets: inherit
     permissions:
       contents: read

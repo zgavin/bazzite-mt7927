@@ -1,6 +1,7 @@
 # Parameterize the base image so CI matrix / local builds can select any bazzite variant.
 # Default keeps backward compatibility with the original single-image build.
-ARG BASE_IMAGE=ghcr.io/ublue-os/bazzite-nvidia-open:stable
+ARG BASE_IMAGE=ghcr.io/ublue-os/bazzite-dx-gnome:stable
+ARG VARIANT=default
 
 # Allow build scripts to be referenced without being copied into the final image
 FROM scratch AS ctx
@@ -14,10 +15,17 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/log \
     /ctx/build.sh
 
-# Stage 2: Install only the compiled artifacts into a clean base
+# Stage 2: Install compiled artifacts + variant-specific customizations
 FROM ${BASE_IMAGE}
+ARG VARIANT
+ENV VARIANT=${VARIANT}
 
 COPY --from=builder /output/ /
+
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    /ctx/customize.sh
 
 RUN depmod -a "$(rpm -q kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' | tail -1)"
 
