@@ -85,6 +85,11 @@ if [[ "${VARIANT}" == "niri" ]]; then
     install -Dm644 "${CTX}/config/greetd.toml" /etc/greetd/config.toml
     systemctl enable greetd.service
     systemctl set-default graphical.target
+
+    # Auto-start DMS inside every user's niri session. The dms.service user
+    # unit is WantedBy=graphical-session.target, which niri.service binds to
+    # via niri-session; enabling --global adds it to every user's wants.
+    systemctl --global enable dms.service
 fi
 
 echo "customize.sh done."
