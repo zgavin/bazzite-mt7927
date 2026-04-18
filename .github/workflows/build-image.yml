@@ -7,15 +7,18 @@ on:
       base_image:
         required: true
         type: string
+      image_name:
+        required: true
+        type: string
       tag:
         required: true
         type: string
       image_desc:
         required: true
         type: string
-      variant_suffix:
+      variant:
         type: string
-        default: ""
+        default: "default"
 
 env:
   IMAGE_KEYWORDS: "bootc,ublue,universal-blue,mt7927,mt6639,wifi7,mediatek"
@@ -24,7 +27,7 @@ env:
 
 jobs:
   build_push:
-    name: Build ${{ inputs.base_image }}${{ inputs.variant_suffix }} (${{ inputs.tag }})
+    name: Build ${{ inputs.image_name }} (${{ inputs.tag }})
     runs-on: ubuntu-24.04
 
     permissions:
@@ -33,18 +36,19 @@ jobs:
       id-token: write
 
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.base_image }}${{ inputs.variant_suffix }}-${{ inputs.tag }}
+      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.image_name }}-${{ inputs.tag }}
       cancel-in-progress: true
 
     steps:
       - name: Prepare environment
         run: |
-          IMAGE_NAME="${{ inputs.base_image }}-mt7927${{ inputs.variant_suffix }}"
+          IMAGE_NAME="${{ inputs.image_name }}"
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
           IMAGE_REGISTRY="${{ env.IMAGE_REGISTRY }}"
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
           echo "DEFAULT_TAG=${{ inputs.tag }}" >> ${GITHUB_ENV}
           echo "BASE_IMAGE=ghcr.io/ublue-os/${{ inputs.base_image }}:${{ inputs.tag }}" >> ${GITHUB_ENV}
+          echo "VARIANT=${{ inputs.variant }}" >> ${GITHUB_ENV}
 
       # These stage versions are pinned by https://github.com/renovatebot/renovate
       - name: Checkout
@@ -99,6 +103,7 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           build-args: |
             BASE_IMAGE=${{ env.BASE_IMAGE }}
+            VARIANT=${{ env.VARIANT }}
           oci: false
 
       - name: Setup Just
