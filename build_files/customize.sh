@@ -64,7 +64,7 @@ if [[ "${VARIANT}" == "niri" ]]; then
         xdg-desktop-portal-gtk \
         xwayland-satellite \
         greetd \
-        tuigreet \
+        dms-greeter \
         adobe-source-code-pro-fonts \
         fontawesome-fonts-all
 
