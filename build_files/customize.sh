@@ -78,6 +78,14 @@ if [[ "${VARIANT}" == "niri" ]]; then
         gnome-software \
         gdm || true
 
+    # bazzite ships unowned .desktop session files for GNOME Wayland/Xorg and
+    # gamescope/Steam (not via rpm, so dnf can't remove them). Strip so the
+    # greeter's session picker shows only niri. gamescope stays installed as a
+    # package; we're just hiding the session entries.
+    rm -f /usr/share/wayland-sessions/gnome*.desktop \
+          /usr/share/xsessions/gnome*.desktop \
+          /usr/share/wayland-sessions/gamescope*.desktop
+
     for repo in "${COPR_REPOS[@]}"; do
         dnf5 -y copr disable "${repo}" || true
     done
