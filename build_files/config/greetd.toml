@@ -4,4 +4,4 @@ switch = true
 
 [default_session]
 command = "tuigreet --time --remember --remember-session --asterisks --sessions /usr/share/wayland-sessions"
-user = "greeter"
+user = "greetd"
