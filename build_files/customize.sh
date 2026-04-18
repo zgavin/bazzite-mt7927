@@ -83,6 +83,7 @@ if [[ "${VARIANT}" == "niri" ]]; then
     done
 
     install -Dm644 "${CTX}/config/greetd.toml" /etc/greetd/config.toml
+    install -Dm644 "${CTX}/config/sysusers-dms-greeter.conf" /usr/lib/sysusers.d/dms-greeter.conf
     systemctl enable greetd.service
     systemctl set-default graphical.target
 
