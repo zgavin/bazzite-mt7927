@@ -9,12 +9,12 @@ echo "Running customize.sh for VARIANT=${VARIANT}"
 ### Common: ghostty as default terminal ###
 
 # Ensure ghostty is installed. It's not in Fedora 43 base repos, so we use the
-# pgdev/ghostty COPR. That package ships /usr/share/terminfo/g/ghostty which
+# scottames/ghostty COPR. That package ships /usr/share/terminfo/g/ghostty which
 # conflicts with ncurses-term; we download the transaction and install via
 # `rpm -Uvh --replacefiles` to claim the file for ghostty while keeping
 # ncurses-term otherwise intact.
 if ! rpm -q ghostty >/dev/null 2>&1; then
-    dnf5 -y copr enable pgdev/ghostty
+    dnf5 -y copr enable scottames/ghostty
     mkdir -p /tmp/ghostty-rpms
     # Use `dnf5 download` with .x86_64 suffix so dnf doesn't also pull the
     # matching .src.rpm (which drags in build-deps via --resolve).
@@ -24,7 +24,7 @@ if ! rpm -q ghostty >/dev/null 2>&1; then
     rpm -Uvh --replacefiles --replacepkgs \
         $(find /tmp/ghostty-rpms -maxdepth 1 -name '*.rpm' ! -name '*.src.rpm')
     rm -rf /tmp/ghostty-rpms
-    dnf5 -y copr disable pgdev/ghostty
+    dnf5 -y copr disable scottames/ghostty
 fi
 
 install -Dm644 "${CTX}/config/ghostty-terminal.sh" /etc/profile.d/ghostty-terminal.sh
