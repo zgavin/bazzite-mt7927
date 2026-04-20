@@ -106,6 +106,17 @@ if [[ "${VARIANT}" == "niri" ]]; then
     # unit is WantedBy=graphical-session.target, which niri.service binds to
     # via niri-session; enabling --global adds it to every user's wants.
     systemctl --global enable dms.service
+
+    # greetd's rpm bakes /var/lib/greetd/.config/systemd/user/xdg-desktop-portal.service -> /dev/null
+    # to mask XDP for the greetd daemon user's would-be session. Our greeter
+    # runs as the `greeter` user (via dms-greeter), not `greetd`, so this mask
+    # is dead weight and bootc lint flags it as untracked /var content.
+    rm -rf /var/lib/greetd/.config
 fi
+
+# Scrub scratch files dnf5 / semanage left in /run and /tmp during the build.
+# bootc mounts these fresh as tmpfs at runtime; content here would never reach
+# the running system anyway and the lint warns about it.
+rm -rf /run/* /tmp/* 2>/dev/null || true
 
 echo "customize.sh done."
