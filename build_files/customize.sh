@@ -40,6 +40,11 @@ exec-arg=''
 EOF
 dconf update || true
 
+# docker-ce creates its group via a %post scriptlet that bootc doesn't
+# persist across deploys. Ship a sysusers.d drop-in so systemd-sysusers
+# recreates the docker group on every boot.
+install -Dm644 "${CTX}/config/sysusers-docker.conf" /usr/lib/sysusers.d/docker.conf
+
 ### Niri variant ###
 
 if [[ "${VARIANT}" == "niri" ]]; then
