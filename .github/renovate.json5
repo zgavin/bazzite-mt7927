@@ -17,5 +17,21 @@
       "matchDepTypes": ["container"],
       "matchFileNames": [".github/workflows/**.yaml", ".github/workflows/**.yml"],
     },
-  ]
+  ],
+
+  // Track bazzite-org/gamescope ba* tags so we stay in sync with the
+  // gamescope-bazzite RPM shipped by the base image. CI rebuilds on the
+  // PR and surfaces any patch-application breakage.
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^build_files/build-gamescope\\.sh$/"],
+      "matchStrings": [
+        "GAMESCOPE_REF=\"(?<currentValue>ba\\d+(?:\\.\\d+)?)\"",
+      ],
+      "datasourceTemplate": "git-tags",
+      "depNameTemplate": "https://github.com/bazzite-org/gamescope",
+      "versioningTemplate": "regex:^ba(?<major>\\d+)(?:\\.(?<minor>\\d+))?$",
+    },
+  ],
 }
