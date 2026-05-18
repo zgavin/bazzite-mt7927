@@ -11,16 +11,17 @@
 # (pipewire, sdl2_backend). gamescope already vendors wlroots/libliftoff/
 # vkroots via meson force_fallback, so we don't need system wlroots-devel.
 #
-# Pinned to the same upstream commit as the bazzite ba148 RPM the base
-# image already ships, so the patch's diff context stays valid until we
-# deliberately bump GAMESCOPE_REF.
+# Pinned to a baNNN tag from bazzite-org/gamescope so we track the same
+# version stream as the bazzite base image's RPM. Renovate watches this
+# ref (see .github/renovate.json5) and opens a PR when a new ba* tag is
+# published upstream; CI then tells us if our patch still applies.
 set -ouex pipefail
 
 CTX="/ctx"
 BUILD_DIR="/tmp/gamescope-build"
 OUTPUT_DIR="/output"
 GAMESCOPE_REPO="https://github.com/bazzite-org/gamescope.git"
-GAMESCOPE_REF="c31743d"
+GAMESCOPE_REF="ba147"
 
 ### Build toolchain + gamescope's own meson deps. Subproject-resolved deps
 ### (wlroots, libliftoff, vkroots, libdisplay-info, openvr, stb, glm) are
