@@ -1,0 +1,64 @@
+Make gamescope's xdg_toplevel app_id configurable and sticky.
+
+GNOME associates a window with a `.desktop` entry via xdg_toplevel.set_app_id
+(wm_class on Wayland) matched against `StartupWMClass=`. Stock gamescope sets
+app_id="gamescope" once during plane init via libdecor, but state transitions
+during the inner game's startup leave the toplevel with a null app_id on
+Mutter — so the per-game `.desktop` we just wrote no longer matches and GNOME
+shows the generic "Gamescope" or "Unknown" branding.
+
+Two changes:
+
+* Read app_id from $GAMESCOPE_APP_ID, falling back to "gamescope". Lets
+  scopebuddy AppID configs pin a per-game value so a per-game .desktop with
+  StartupWMClass=<value> matches uniquely (no more racing against the system
+  /usr/share/applications/gamescope.desktop and no more per-launch desktop
+  file overwrites).
+
+* Re-pin app_id on every SetTitle() call and on every LibDecor_Frame_Configure
+  callback. Whatever is clearing it gets immediately overwritten.
+
+diff --git a/src/Backends/WaylandBackend.cpp b/src/Backends/WaylandBackend.cpp
+--- a/src/Backends/WaylandBackend.cpp
++++ b/src/Backends/WaylandBackend.cpp
+@@ -1238,12 +1238,21 @@ namespace gamescope
+         m_bVisible = bVisible;
+         force_repaint();
+     }
++    // Returns the app_id we set on our xdg_toplevel. Read from $GAMESCOPE_APP_ID
++    // to let callers (scopebuddy AppID configs, etc.) pin a per-game value that
++    // a desktop entry's StartupWMClass= can match against.
++    static const char *GamescopeAppId()
++    {
++        const char *psz = getenv( "GAMESCOPE_APP_ID" );
++        return ( psz && *psz ) ? psz : "gamescope";
++    }
+     void CWaylandConnector::SetTitle( std::shared_ptr<std::string> pAppTitle )
+     {
+         std::string szTitle = pAppTitle ? *pAppTitle : "gamescope";
+         if ( g_bGrabbed )
+             szTitle += " (grabbed)";
+         libdecor_frame_set_title( m_Planes[0].GetFrame(), szTitle.c_str() );
++        libdecor_frame_set_app_id( m_Planes[0].GetFrame(), GamescopeAppId() );
+     }
+     void CWaylandConnector::SetIcon( std::shared_ptr<std::vector<uint32_t>> uIconPixels )
+     {
+@@ -1404,7 +1413,7 @@ namespace gamescope
+ 			wl_proxy_set_tag( (wl_proxy *)m_pSurface, &GAMESCOPE_toplevel_tag );
+             m_pFrame = libdecor_decorate( m_pBackend->GetLibDecor(), m_pSurface, &s_LibDecorFrameInterface, this );
+             libdecor_frame_set_title( m_pFrame, "Gamescope" );
+-            libdecor_frame_set_app_id( m_pFrame, "gamescope" );
++            libdecor_frame_set_app_id( m_pFrame, GamescopeAppId() );
+             libdecor_frame_map( m_pFrame );
+         }
+         else
+@@ -1724,6 +1733,9 @@ namespace gamescope
+         g_nOutputWidth  = WaylandScaleToPhysical( nWidth, uScale );
+         g_nOutputHeight = WaylandScaleToPhysical( nHeight, uScale );
+
++        if ( m_pFrame )
++            libdecor_frame_set_app_id( m_pFrame, GamescopeAppId() );
++
+         CommitLibDecor( pConfiguration );
+
+         force_repaint();

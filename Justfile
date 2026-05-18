@@ -249,6 +249,29 @@ test $target_image=image_name $tag=default_tag:
         FAIL=1
     fi
 
+    # Gamescope sticky-app-id patch
+    # Our patch adds `getenv("GAMESCOPE_APP_ID")`, so the literal lands in the
+    # binary's strings table; stock gamescope has no such reference. This
+    # asserts the override at /usr/bin/gamescope is in fact our build (and not
+    # silently the base RPM's, e.g. if COPY --from=builder didn't overwrite).
+    if podman run --rm "${IMAGE}" sh -c 'strings /usr/bin/gamescope | grep -q GAMESCOPE_APP_ID'; then
+        echo "PASS: gamescope binary carries sticky-app-id patch"
+    else
+        echo "FAIL: GAMESCOPE_APP_ID literal not found in /usr/bin/gamescope"
+        echo "  Either the patch didn't apply, the binary wasn't staged, or the base RPM's binary wasn't overwritten."
+        FAIL=1
+    fi
+
+    # Sanity: gamescope still launches enough to print --help. Catches a
+    # disabled-feature build option that silently drops a runtime lib the
+    # binary still tries to resolve.
+    if podman run --rm "${IMAGE}" /usr/bin/gamescope --help >/dev/null 2>&1; then
+        echo "PASS: gamescope --help runs"
+    else
+        echo "FAIL: gamescope --help failed"
+        FAIL=1
+    fi
+
     if [[ "${FAIL}" -eq 0 ]]; then
         echo "All checks passed."
     else

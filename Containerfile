@@ -15,6 +15,11 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/log \
     /ctx/build.sh
 
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    /ctx/build-gamescope.sh
+
 # Stage 2: Install compiled artifacts + variant-specific customizations
 FROM ${BASE_IMAGE}
 ARG VARIANT
