@@ -94,7 +94,10 @@ jobs:
 
       - name: Build Image
         id: build_image
-        uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2
+        # Pinned past v2.13 to the merged node-24 commit: the latest tagged
+        # release (v2.13) still runs on Node 20, which GitHub force-migrates to
+        # Node 24 on 2026-06-16. No node24 release is tagged yet, so pin the SHA.
+        uses: redhat-actions/buildah-build@061ffd31bb5c3f8733a6f9bbdf00a9fb02eb708c # node24 (post-v2.13)
         with:
           containerfiles: |
             ./Containerfile
