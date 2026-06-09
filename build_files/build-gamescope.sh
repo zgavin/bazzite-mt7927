@@ -66,11 +66,19 @@ git apply       "${CTX}/gamescope-sticky-app-id.patch"
 ### packages depend on bazzite-excluded *-libs. The user runs gamescope
 ### only via scopebuddy (Wayland backend nested under GNOME), so neither
 ### feature is exercised.
+###
+### -Dwlroots:werror=false: the vendored wlroots 0.18 subproject ships
+### werror=true and builds against Fedora's rolling libinput-devel. When
+### Fedora adds a new LIBINPUT_SWITCH_* enum (e.g. LIBINPUT_SWITCH_KEYPAD_SLIDE),
+### wlroots' unhandled switch case trips -Werror=switch and breaks the daily
+### build. We don't control the pinned wlroots source, so disable werror for
+### that subproject to stay robust against upstream header bumps.
 meson setup build \
     --prefix=/usr --buildtype=release \
     -Dpipewire=disabled \
     -Dsdl2_backend=disabled \
-    -Denable_openvr_support=false
+    -Denable_openvr_support=false \
+    -Dwlroots:werror=false
 
 # Bazzite's PATH front-loads /usr/lib64/ccache symlinks, and ccache races on
 # parallel writes in this builder ("File exists" on the cache dir). Bypass
