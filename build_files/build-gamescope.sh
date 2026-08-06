@@ -80,11 +80,19 @@ git apply       "${CTX}/gamescope-sticky-app-id.patch"
 ### wlroots' unhandled switch case trips -Werror=switch and breaks the daily
 ### build. We don't control the pinned wlroots source, so disable werror for
 ### that subproject to stay robust against upstream header bumps.
+###
+### -Denable_tests=false: the option defaults to true, and tests/meson.build
+### hard-requires dependency('catch2-with-main'), which isn't in the dep list
+### above — so `meson setup` fails outright without this. Terra's spec instead
+### BuildRequires pkgconfig(catch2-with-main), but we only stage the gamescope
+### binary and never run the unit tests, so skipping them is both sufficient
+### and cheaper than compiling the extra test binary.
 meson setup build \
     --prefix=/usr --buildtype=release \
     -Dpipewire=disabled \
     -Dsdl2_backend=disabled \
     -Denable_openvr_support=false \
+    -Denable_tests=false \
     -Dwlroots:werror=false
 
 # Bazzite's PATH front-loads /usr/lib64/ccache symlinks, and ccache races on
