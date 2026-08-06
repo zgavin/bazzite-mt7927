@@ -19,19 +19,20 @@
     },
   ],
 
-  // Track bazzite-org/gamescope ba* tags so we stay in sync with the
-  // gamescope-bazzite RPM shipped by the base image. CI rebuilds on the
-  // PR and surfaces any patch-application breakage.
+  // Track the OpenGamingCollective/gamescope `ogc` branch HEAD so we stay in
+  // sync with the terra-gamescope RPM shipped by the base image, which pins
+  // that same branch by commit. The old bazzite-org/gamescope ba* tag stream
+  // is gone (org retired July 2026). CI rebuilds on the PR and surfaces any
+  // patch-application breakage.
   "customManagers": [
     {
       "customType": "regex",
       "managerFilePatterns": ["/^build_files/build-gamescope\\.sh$/"],
       "matchStrings": [
-        "GAMESCOPE_REF=\"(?<currentValue>ba\\d+(?:\\.\\d+)?)\"",
+        "GAMESCOPE_BRANCH=\"(?<currentValue>[^\"]+)\"\\s+GAMESCOPE_REF=\"(?<currentDigest>[0-9a-f]{40})\"",
       ],
-      "datasourceTemplate": "git-tags",
-      "depNameTemplate": "https://github.com/bazzite-org/gamescope",
-      "versioningTemplate": "regex:^ba(?<major>\\d+)(?:\\.(?<minor>\\d+))?$",
+      "datasourceTemplate": "git-refs",
+      "depNameTemplate": "https://github.com/OpenGamingCollective/gamescope",
     },
   ],
 }
