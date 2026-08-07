@@ -1,7 +1,7 @@
 #!/bin/bash
-# Builds gamescope from bazzite-org/gamescope with our sticky-app-id patch
-# applied, and stages the patched binary under $OUTPUT_DIR (which the final
-# stage copies onto /).
+# Builds gamescope from OpenGamingCollective/gamescope with our sticky-app-id
+# patch applied, and stages the patched binary under $OUTPUT_DIR (which the
+# final stage copies onto /).
 #
 # We avoid `dnf5 builddep gamescope` here because the bazzite RPM's SPEC
 # pulls Fedora pipewire/sdl2-compat/wlroots -devel sets whose transitive
@@ -11,17 +11,24 @@
 # (pipewire, sdl2_backend). gamescope already vendors wlroots/libliftoff/
 # vkroots via meson force_fallback, so we don't need system wlroots-devel.
 #
-# Pinned to a baNNN tag from bazzite-org/gamescope so we track the same
-# version stream as the bazzite base image's RPM. Renovate watches this
-# ref (see .github/renovate.json5) and opens a PR when a new ba* tag is
-# published upstream; CI then tells us if our patch still applies.
+# Source history: bazzite used to build its own gamescope RPM from
+# bazzite-org/gamescope, tagged baNNN, and we pinned those tags to match.
+# In July 2026 the bazzite-org GitHub org was retired — the fork moved to
+# OpenGamingCollective/gamescope (default branch `ogc`, no more ba* tags)
+# and the base image now installs `terra-gamescope` from Terra instead.
+# Terra pins the `ogc` branch HEAD commit (see terrapkg/packages
+# anda/games/terra-gamescope), so we pin a commit off the same branch to
+# stay on the base image's version stream. Renovate watches the branch
+# (see .github/renovate.json5) and bumps GAMESCOPE_REF when `ogc` moves;
+# CI then tells us if our patch still applies.
 set -ouex pipefail
 
 CTX="/ctx"
 BUILD_DIR="/tmp/gamescope-build"
 OUTPUT_DIR="/output"
-GAMESCOPE_REPO="https://github.com/bazzite-org/gamescope.git"
-GAMESCOPE_REF="ba147"
+GAMESCOPE_REPO="https://github.com/OpenGamingCollective/gamescope.git"
+GAMESCOPE_BRANCH="ogc"
+GAMESCOPE_REF="c466c5d5cad88f6d80c3776294bbb8926fea7873"
 
 ### Build toolchain + gamescope's own meson deps. Subproject-resolved deps
 ### (wlroots, libliftoff, vkroots, libdisplay-info, openvr, stb, glm) are
@@ -54,7 +61,7 @@ dnf5 install -y xorg-x11-server-Xwayland-devel
 
 ### Clone, pin, init submodules, apply patch.
 rm -rf "${BUILD_DIR}"
-git clone "${GAMESCOPE_REPO}" "${BUILD_DIR}"
+git clone --branch "${GAMESCOPE_BRANCH}" "${GAMESCOPE_REPO}" "${BUILD_DIR}"
 cd "${BUILD_DIR}"
 git checkout "${GAMESCOPE_REF}"
 git submodule update --init --recursive
@@ -73,11 +80,19 @@ git apply       "${CTX}/gamescope-sticky-app-id.patch"
 ### wlroots' unhandled switch case trips -Werror=switch and breaks the daily
 ### build. We don't control the pinned wlroots source, so disable werror for
 ### that subproject to stay robust against upstream header bumps.
+###
+### -Denable_tests=false: the option defaults to true, and tests/meson.build
+### hard-requires dependency('catch2-with-main'), which isn't in the dep list
+### above — so `meson setup` fails outright without this. Terra's spec instead
+### BuildRequires pkgconfig(catch2-with-main), but we only stage the gamescope
+### binary and never run the unit tests, so skipping them is both sufficient
+### and cheaper than compiling the extra test binary.
 meson setup build \
     --prefix=/usr --buildtype=release \
     -Dpipewire=disabled \
     -Dsdl2_backend=disabled \
     -Denable_openvr_support=false \
+    -Denable_tests=false \
     -Dwlroots:werror=false
 
 # Bazzite's PATH front-loads /usr/lib64/ccache symlinks, and ccache races on
