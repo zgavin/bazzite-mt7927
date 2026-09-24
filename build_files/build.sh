@@ -9,12 +9,19 @@ OUTPUT_DIR="/output"
 KVER=$(rpm -q kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' | tail -1)
 echo "Building MT7927 modules for kernel: ${KVER}"
 
-### Upstream detection guard
-if modinfo -k "${KVER}" -F alias mt7925e 2>/dev/null | grep -q '7927'; then
-    echo "MT7927 support already present in kernel ${KVER}, skipping."
-    mkdir -p "${OUTPUT_DIR}"
-    exit 0
-fi
+### What we build
+#
+# MT7927 WiFi (PCIe ID 14c3:7927) and MT6639 Bluetooth are both in mainline
+# since 7.2 / 7.1, so there is no "upstream already has it" early exit: the
+# stock kernel claims the device either way. We still build the mt76 WiFi
+# modules, which carry the AP-mode patches and the mlo_pm_work CVE backports
+# that 7.2 lacks, and we still ship the MT6639 BT firmware, which linux-firmware
+# does not carry -- without it btmtk resets the controller in an unbounded loop.
+#
+# btusb/btmtk come from the stock kernel, matching the DKMS package's default on
+# 7.1+; our copies would add only the 0489:e156 ID. WiFi firmware also comes
+# from linux-firmware, which has MediaTek's newer build; installing the blob we
+# extract from the Windows driver ZIP would shadow it.
 
 ### Install build dependencies
 dnf5 install -y --skip-unavailable \
@@ -107,25 +114,19 @@ SRCDIR="${DKMS}/_build"
 
 ### Compile
 KSRC="/lib/modules/${KVER}/build"
-make -C "${KSRC}" M="${SRCDIR}/bluetooth" -j"$(nproc)" modules
-make -C "${KSRC}" M="${SRCDIR}/mt76"      -j"$(nproc)" modules
+make -C "${KSRC}" M="${SRCDIR}/mt76" -j"$(nproc)" modules
 
 ### Stage kernel modules
 INSTALL_DIR="${OUTPUT_DIR}/usr/lib/modules/${KVER}/extra/mt7927"
 mkdir -p "${INSTALL_DIR}"
-install -m644 "${SRCDIR}"/bluetooth/{btusb,btmtk}.ko                          "${INSTALL_DIR}/"
-install -m644 "${SRCDIR}"/mt76/{mt76,mt76-connac-lib,mt792x-lib}.ko           "${INSTALL_DIR}/"
-install -m644 "${SRCDIR}"/mt76/mt7921/{mt7921-common,mt7921e}.ko              "${INSTALL_DIR}/"
-install -m644 "${SRCDIR}"/mt76/mt7925/{mt7925-common,mt7925e}.ko              "${INSTALL_DIR}/"
+install -m644 "${SRCDIR}"/mt76/{mt76,mt76-connac-lib,mt792x-lib}.ko "${INSTALL_DIR}/"
+install -m644 "${SRCDIR}"/mt76/mt7921/{mt7921-common,mt7921e}.ko    "${INSTALL_DIR}/"
+install -m644 "${SRCDIR}"/mt76/mt7925/{mt7925-common,mt7925e}.ko    "${INSTALL_DIR}/"
 xz --check=crc32 -f "${INSTALL_DIR}"/*.ko
 
 ### Stage firmware
 install -Dm644 "${SRCDIR}/firmware/BT_RAM_CODE_MT6639_2_1_hdr.bin" \
     "${OUTPUT_DIR}/usr/lib/firmware/mediatek/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin"
-install -Dm644 "${SRCDIR}/firmware/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin" \
-    "${OUTPUT_DIR}/usr/lib/firmware/mediatek/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin"
-install -Dm644 "${SRCDIR}/firmware/WIFI_RAM_CODE_MT6639_2_1.bin" \
-    "${OUTPUT_DIR}/usr/lib/firmware/mediatek/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin"
 
 ### Stage config files
 install -Dm644 "${CTX}/config/depmod-mt7927.conf" "${OUTPUT_DIR}/etc/depmod.d/mt7927.conf"
