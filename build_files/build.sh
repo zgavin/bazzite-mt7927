@@ -24,6 +24,82 @@ dnf5 install -y --skip-unavailable \
 mkdir -p "${BUILD_DIR}"
 DKMS="${BUILD_DIR}/dkms"
 cp -r "${CTX}/mediatek-mt7927-dkms" "${DKMS}"
+
+### Fetch sources with retries
+#
+# `make download` pulls the 151MB kernel tarball and the ASUS driver ZIP with a
+# bare `curl -L -f`, so one mid-stream reset fails the whole image build (seen
+# in CI as `curl: (92) HTTP/2 stream 1 was not closed cleanly: PROTOCOL_ERROR`
+# two thirds through the kernel tarball). Both the Makefile and
+# download-driver.sh skip a file that already exists, so fetch them here with
+# retries and checksum verification, and `make download` then no-ops.
+PKGBUILD="${DKMS}/PKGBUILD"
+MT76_KVER=$(sed -n "s/^_mt76_kver='\(.*\)'/\1/p" "${PKGBUILD}")
+KERNEL_TARBALL="linux-${MT76_KVER}.tar.xz"
+KERNEL_SHA256=$(sed -n "s/^sha256sums=('\([0-9a-f]\{64\}\)'.*/\1/p" "${PKGBUILD}")
+DRIVER_ZIP=$(sed -n "s/^_driver_filename='\(.*\)'/\1/p" "${PKGBUILD}")
+DRIVER_SHA256=$(sed -n "s/^_driver_sha256='\([0-9a-f]\{64\}\)'/\1/p" "${PKGBUILD}")
+
+# Fail fast rather than burning five attempts on an unverifiable download if the
+# submodule ever reformats these declarations.
+for var in MT76_KVER KERNEL_SHA256 DRIVER_ZIP DRIVER_SHA256; do
+    if [[ -z "${!var}" ]]; then
+        echo >&2 "ERROR: could not parse ${var} from ${PKGBUILD}"
+        exit 1
+    fi
+done
+
+retry() {
+    local what="$1"; shift
+    local attempt
+    for attempt in 1 2 3 4 5; do
+        if "$@"; then
+            return 0
+        fi
+        if [[ ${attempt} -lt 5 ]]; then
+            echo "warn: ${what} failed (attempt ${attempt}/5), retrying in $((attempt * 10))s"
+            sleep $((attempt * 10))
+        fi
+    done
+    echo >&2 "ERROR: ${what} failed after 5 attempts"
+    return 1
+}
+
+# Keeps a partial file so the next attempt resumes it, but discards a complete
+# file that fails verification -- resuming that would never converge.
+verify_or_discard() {
+    local file="$1" sha256="$2"
+    if echo "${sha256}  ${file}" | sha256sum --check --status; then
+        return 0
+    fi
+    echo "warn: $(basename "${file}") failed sha256 verification, discarding"
+    rm -f "${file}"
+    return 1
+}
+
+fetch_kernel_tarball() {
+    # --continue-at resumes a partial file from a previous attempt; the speed
+    # limit aborts a transfer that has stalled instead of waiting out the
+    # runner's job timeout.
+    curl -L -f --continue-at - \
+        --retry 3 --retry-delay 5 --retry-all-errors \
+        --connect-timeout 30 --speed-limit 1000 --speed-time 60 \
+        -o "${DKMS}/${KERNEL_TARBALL}" \
+        "https://cdn.kernel.org/pub/linux/kernel/v${MT76_KVER%%.*}.x/${KERNEL_TARBALL}" \
+        || return 1
+    verify_or_discard "${DKMS}/${KERNEL_TARBALL}" "${KERNEL_SHA256}"
+}
+
+fetch_driver_zip() {
+    # Each attempt re-runs the script so it mints a fresh CloudFront token;
+    # reusing an expired signed URL would just 403.
+    DRIVER_FILENAME="${DRIVER_ZIP}" "${DKMS}/download-driver.sh" "${DKMS}" || return 1
+    verify_or_discard "${DKMS}/${DRIVER_ZIP}" "${DRIVER_SHA256}"
+}
+
+retry "kernel tarball download" fetch_kernel_tarball
+retry "driver ZIP download" fetch_driver_zip
+
 make -C "${DKMS}" download
 make -C "${DKMS}" sources
 
