@@ -114,10 +114,10 @@ test $target_image=image_name $tag=default_tag:
 
     echo "Testing ${IMAGE}..."
 
-    # Check all 9 kernel modules
+    # Check all 7 mt76 WiFi modules (btusb/btmtk come from the stock kernel)
     MODULES=$(podman run --rm "${IMAGE}" find /usr/lib/modules -path '*/extra/mt7927/*.ko.xz' | sort)
-    EXPECTED_COUNT=9
-    ACTUAL_COUNT=$(echo "${MODULES}" | wc -l)
+    EXPECTED_COUNT=7
+    ACTUAL_COUNT=$(grep -c . <<< "${MODULES}" || true)
     if [[ "${ACTUAL_COUNT}" -eq "${EXPECTED_COUNT}" ]]; then
         echo "PASS: ${ACTUAL_COUNT} kernel modules found"
     else
@@ -146,18 +146,40 @@ test $target_image=image_name $tag=default_tag:
         FAIL=1
     fi
 
-    # Check firmware blobs
-    for fw in \
-        /usr/lib/firmware/mediatek/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin \
-        /usr/lib/firmware/mediatek/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin \
-        /usr/lib/firmware/mediatek/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin; do
-        if podman run --rm "${IMAGE}" test -f "${fw}"; then
-            echo "PASS: ${fw}"
+    # Check firmware blobs. The BT blob is ours (linux-firmware doesn't carry
+    # it); the WiFi blobs come from linux-firmware, compressed. An uncompressed
+    # WiFi blob would be one we staged, and the loader would pick it over
+    # MediaTek's newer linux-firmware build.
+    FW_DIR=/usr/lib/firmware/mediatek/mt7927
+    if podman run --rm "${IMAGE}" test -f "${FW_DIR}/BT_RAM_CODE_MT6639_2_1_hdr.bin"; then
+        echo "PASS: ${FW_DIR}/BT_RAM_CODE_MT6639_2_1_hdr.bin"
+    else
+        echo "FAIL: missing ${FW_DIR}/BT_RAM_CODE_MT6639_2_1_hdr.bin"
+        FAIL=1
+    fi
+    for fw in WIFI_MT6639_PATCH_MCU_2_1_hdr.bin WIFI_RAM_CODE_MT6639_2_1.bin; do
+        if podman run --rm "${IMAGE}" test -f "${FW_DIR}/${fw}"; then
+            echo "FAIL: ${FW_DIR}/${fw} is uncompressed and shadows linux-firmware's copy"
+            FAIL=1
+        elif podman run --rm "${IMAGE}" sh -c "ls ${FW_DIR}/${fw}.xz ${FW_DIR}/${fw}.zst 2>/dev/null | grep -q ."; then
+            echo "PASS: ${fw} provided by linux-firmware"
         else
-            echo "FAIL: missing ${fw}"
+            echo "FAIL: missing ${FW_DIR}/${fw} (.xz/.zst) from linux-firmware"
             FAIL=1
         fi
     done
+
+    # Check the stock btmtk requests the BT blob at the path we install it to.
+    # If the kernel ever renames it, the blob goes unused and btmtk falls into
+    # its reset loop.
+    BT_FW=$(podman run --rm "${IMAGE}" modinfo -k "${KVER}" -F firmware btmtk 2>&1 || true)
+    if grep -qx 'mediatek/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin' <<< "${BT_FW}"; then
+        echo "PASS: btmtk requests mediatek/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin"
+    else
+        echo "FAIL: btmtk does not request mediatek/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin"
+        echo "  got: ${BT_FW:-<empty>}"
+        FAIL=1
+    fi
 
     # Check config files
     for cfg in \
@@ -180,16 +202,14 @@ test $target_image=image_name $tag=default_tag:
     fi
 
     # Check module resolution points to our patched modules (not stock)
-    for mod in mt7925e btusb; do
-        MODPATH=$(podman run --rm "${IMAGE}" modinfo -k "${KVER}" -F filename "${mod}" 2>&1 || true)
-        if echo "${MODPATH}" | grep -q 'extra/mt7927'; then
-            echo "PASS: ${mod} resolves to extra/mt7927"
-        else
-            echo "FAIL: ${mod} does not resolve to extra/mt7927"
-            echo "  got: ${MODPATH}"
-            FAIL=1
-        fi
-    done
+    MODPATH=$(podman run --rm "${IMAGE}" modinfo -k "${KVER}" -F filename mt7925e 2>&1 || true)
+    if echo "${MODPATH}" | grep -q 'extra/mt7927'; then
+        echo "PASS: mt7925e resolves to extra/mt7927"
+    else
+        echo "FAIL: mt7925e does not resolve to extra/mt7927"
+        echo "  got: ${MODPATH}"
+        FAIL=1
+    fi
 
     # Check modules.alias maps MT7927 PCI ID to our patched mt7925e
     # This is the critical check: even if modules are on disk, the kernel
@@ -230,9 +250,9 @@ test $target_image=image_name $tag=default_tag:
     # or load a mix of patched + stock modules with incompatible symbols.
     DEPS=$(podman run --rm "${IMAGE}" modprobe --show-depends --set-version "${KVER}" mt7925e 2>&1 || true)
     if echo "${DEPS}" | grep -q '^insmod '; then
-        # Only flag stock modules that we patch (mt76 family + btusb/btmtk).
+        # Only flag stock modules that we patch (mt76 family).
         # Stock deps like cfg80211, mac80211, rfkill are expected.
-        PATCHED_NAMES="mt76|mt792x|mt7921|mt7925|btusb|btmtk"
+        PATCHED_NAMES="mt76|mt792x|mt7921|mt7925"
         STOCK_CONFLICT=$(echo "${DEPS}" | grep '/kernel/' | grep -E "${PATCHED_NAMES}" || true)
         if [[ -z "${STOCK_CONFLICT}" ]]; then
             echo "PASS: all patched modules resolve to extra/mt7927"
