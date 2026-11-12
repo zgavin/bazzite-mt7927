@@ -49,15 +49,20 @@ dnf5 install -y --skip-unavailable \
     luajit-devel \
     glslang-devel glslc
 
-# Bazzite locks xorg-x11-server-Xwayland to its custom build via dnf5's
-# versionlock (a built-in command, not a plugin), which makes Fedora's
-# Xwayland uninstallable — the -devel package's strict version match against
-# -runtime can't be resolved. wlroots needs pkgconfig(xwayland) at build time,
-# so drop the lock just in this builder stage and pull Fedora's matching
-# runtime + -devel. Builder is discarded, so the final image's Xwayland and
-# versionlock state are untouched.
-dnf5 versionlock delete xorg-x11-server-Xwayland
-dnf5 install -y xorg-x11-server-Xwayland-devel
+# Bazzite ships its own Xwayland and pins it with dnf5's versionlock (a
+# built-in command, not a plugin), which makes Fedora's Xwayland
+# uninstallable — and Fedora's -devel strictly requires the matching Fedora
+# runtime. wlroots needs pkgconfig(xwayland) at build time, so in this
+# builder stage drop the lock and swap in Fedora's runtime + -devel.
+#
+# Since the F45 rebase (Nov 2026) the base ships Terra's
+# `terra-xorg-x11-server-Xwayland` instead of a same-named custom build. It
+# Provides+Conflicts xorg-x11-server-Xwayland and Terra publishes no -devel,
+# so the swap needs --allowerasing, and the lock entry now sits under the
+# terra-* name. We delete both names so either base layout works. Builder is
+# discarded, so the final image's Xwayland and versionlock state are untouched.
+dnf5 versionlock delete xorg-x11-server-Xwayland terra-xorg-x11-server-Xwayland
+dnf5 install -y --allowerasing xorg-x11-server-Xwayland-devel
 
 ### Clone, pin, init submodules, apply patch.
 rm -rf "${BUILD_DIR}"
