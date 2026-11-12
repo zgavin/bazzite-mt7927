@@ -32,6 +32,9 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/log \
     /ctx/customize.sh
 
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/check-qemu-machine.sh
+
 RUN depmod -a "$(rpm -q kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' | tail -1)"
 
 RUN bootc container lint
