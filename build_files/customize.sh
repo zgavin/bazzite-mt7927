@@ -15,6 +15,11 @@ echo "Running customize.sh for VARIANT=${VARIANT}"
 # ncurses-term otherwise intact.
 if ! rpm -q ghostty >/dev/null 2>&1; then
     dnf5 -y copr enable scottames/ghostty
+    # Raw `rpm -U` doesn't go through dnf's key import, and F45's rpm
+    # enforces signatures by default (fails with NOKEY). Import the COPR's
+    # signing key from the .repo file `copr enable` just wrote.
+    GHOSTTY_REPO=$(grep -l 'scottames' /etc/yum.repos.d/*.repo | head -1)
+    rpm --import "$(sed -n 's/^gpgkey=//p' "${GHOSTTY_REPO}" | head -1)"
     mkdir -p /tmp/ghostty-rpms
     # Use `dnf5 download` with .x86_64 suffix so dnf doesn't also pull the
     # matching .src.rpm (which drags in build-deps via --resolve).
